@@ -4,66 +4,65 @@ import com.microsoft.z3.*;
 import java.util.HashMap;
 import java.util.List;
 
-//Verifiziert Operationshistorien mit Z3 und Java-Verträgen
+
 public class Z3Verifier {
 
-    private static <T> String listToSMTSeqSimple(List<T> list) {
-        if (list.isEmpty()) {
-            return "(as seq.empty (Seq Int))";
-        }
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static SeqExpr<IntSort> listToZ3Seq(List<Integer> list, Context ctx) {
 
-        String result = "(as seq.empty (Seq Int))";
-        for (T item : list) {
-            result = "(seq.++ " + result + " (seq.unit " + item + "))";
+        Sort intSort = ctx.getIntSort();
+        Sort seqSort = ctx.mkSeqSort(intSort);
+
+        SeqExpr result = ctx.mkEmptySeq(seqSort);
+
+        for (Integer item : list) {
+
+            IntExpr intValue = ctx.mkInt(item);
+
+            SeqExpr unit = ctx.mkUnit(intValue);
+
+
+            SeqExpr[] concatArgs = new SeqExpr[]{result, unit};
+            result = ctx.mkConcat(concatArgs);
         }
 
         return result;
     }
 
-    public static <T> String generateSMTLibStates(OperationExecutor<T> executor) {
-        StringBuilder smt = new StringBuilder();
+    public static <T> SeqExpr<IntSort>[] createStateVariablesAndConstraints(
+            OperationExecutor<T> executor, Solver solver, Context ctx) {
 
-        // Header
-        smt.append("(set-logic ALL)\n\n");
-
-        // Zustandsdeklarationen
         List<List<T>> states = executor.getStates();
-        for (int i = 0; i < states.size(); i++) {
-            smt.append(String.format("(declare-const content%d (Seq Int))\n", i));
-        }
-        smt.append("\n");
+        SeqExpr<IntSort>[] contentVars = new SeqExpr[states.size()];
 
-        // Zustandsdefinitionen
+        // Variablen erstellen
         for (int i = 0; i < states.size(); i++) {
-            smt.append(String.format("(assert (= content%d %s))\n",
-                    i, listToSMTSeqSimple(states.get(i))));
+            contentVars[i] = (SeqExpr<IntSort>) ctx.mkConst("content" + i, ctx.mkSeqSort(ctx.getIntSort()));
         }
-        smt.append("\n");
-        System.out.println(smt);
-        return smt.toString();
+
+        // Zustandsdefinitionen als Constraints hinzufügen
+        for (int i = 0; i < states.size(); i++) {
+            @SuppressWarnings("unchecked")
+            List<Integer> state = (List<Integer>) states.get(i);
+
+            SeqExpr<IntSort> stateValue = listToZ3Seq(state, ctx);
+            BoolExpr stateConstraint = ctx.mkEq(contentVars[i], stateValue);
+            solver.add(stateConstraint);
+
+            System.out.println("Z3 Java-API: content" + i + " = " + stateValue);
+        }
+
+        return contentVars;
     }
 
-    //Verifiziert eine Operationshistorie mit Z3 unter Verwendung von Java-Verträgen
     public static <T> boolean verifyOperationHistory(OperationExecutor<T> executor) {
         util.Z3Utils.loadZ3Libraries();
 
         try (Context ctx = new Context(new HashMap<>())) {
             Solver solver = ctx.mkSolver();
 
-            // SMT-Lib Zustände parsen
-            String smtStates = generateSMTLibStates(executor);
-            BoolExpr[] stateAssertions = ctx.parseSMTLIB2String(smtStates, null, null, null, null);
-            for (BoolExpr assertion : stateAssertions) {
-                System.out.println("Z3 parsed: " + assertion);
-                solver.add(assertion);
-            }
-
-            // Zustandsvariablen aus dem Context holen
-            List<List<T>> states = executor.getStates();
-            SeqExpr<IntSort>[] contentVars = new SeqExpr[states.size()];
-            for (int i = 0; i < states.size(); i++) {
-                contentVars[i] = (SeqExpr<IntSort>) ctx.mkConst("content" + i, ctx.mkSeqSort(ctx.getIntSort()));
-            }
+            // Zustandsvariablen erstellen und Historie-Constraints hinzufügen
+            SeqExpr<IntSort>[] contentVars = createStateVariablesAndConstraints(executor, solver, ctx);
 
             // Java-Verträge als Z3-Constraints hinzufügen
             List<ListOperation<T, ?>> operations = executor.getOperations();
@@ -74,7 +73,6 @@ public class Z3Verifier {
                 Object result = results.get(i);
 
                 // Contract-Methode aufrufen (Cast nötig wegen Generics)
-
                 BoolExpr contractConstraint;
                 if (operation instanceof model.operations.AddOperation) {
                     contractConstraint = ((model.operations.AddOperation) operation)
@@ -93,12 +91,12 @@ public class Z3Verifier {
                 }
 
                 solver.add(contractConstraint);
-
+                System.out.println("Contract constraint added for: " + operation.getContractName());
             }
-            System.out.println(solver);
 
             // Satisfiability prüfen
             Status status = solver.check();
+            System.out.println("Z3 Status: " + status);
             return status == Status.SATISFIABLE;
 
         } catch (Exception e) {
