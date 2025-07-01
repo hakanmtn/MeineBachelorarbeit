@@ -1,10 +1,14 @@
 package model.operations;
 
-import com.microsoft.z3.*;
+import com.microsoft.z3.BoolExpr;
+import com.microsoft.z3.Context;
+import com.microsoft.z3.IntSort;
+import com.microsoft.z3.SeqExpr;
 import model.ListOperation;
+
 import java.util.List;
 
-public record AddOperation(Integer element) implements ListOperation<Integer, Boolean> {
+public record AddOperation(Integer element) implements ListOperation<Integer,Boolean>{
 
     @Override
     public Boolean execute(List<Integer> list) {
@@ -17,19 +21,14 @@ public record AddOperation(Integer element) implements ListOperation<Integer, Bo
     }
 
     @Override
-    public BoolExpr contract(SeqExpr<IntSort> oldContent, SeqExpr<IntSort> newContent,
-                             Boolean result, Context context) {
-        // new = old ++ [element]
-        BoolExpr correctSequence = context.mkEq(
-                newContent,
-                context.mkConcat(oldContent, context.mkUnit(context.mkInt(element)))
-        );
+    public BoolExpr contract(SeqExpr<IntSort> oldContent, SeqExpr<IntSort> newContent, Boolean result, Context context) {
 
-        // result = true
-        BoolExpr correctResult = context.mkEq(
-                context.mkBool(result),
-                context.mkTrue()
-        );
+        //newContent = oldContent ++ element
+        BoolExpr correctSequence = context.mkEq(newContent,
+                context.mkConcat(oldContent,context.mkUnit(context.mkInt(element))));
+
+        //result = true
+        BoolExpr correctResult = context.mkEq(context.mkBool(result), context.mkTrue());
 
         return context.mkAnd(correctSequence, correctResult);
     }

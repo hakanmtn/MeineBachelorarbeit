@@ -1,23 +1,20 @@
 package model.operations;
 
-import com.microsoft.z3.BoolExpr;
-import com.microsoft.z3.Context;
-import com.microsoft.z3.IntSort;
-import com.microsoft.z3.SeqExpr;
+import com.microsoft.z3.*;
 import model.ListOperation;
 
 import java.util.List;
 
-public record ContainsOperation(Integer element) implements ListOperation<Integer,Boolean>{
+public record IsEmptyOperation() implements ListOperation<Integer,Boolean>{
 
     @Override
     public Boolean execute(List<Integer> list) {
-        return list.contains(element);
+        return list.isEmpty();
     }
 
     @Override
     public String getContractName() {
-        return "contains";
+        return "isEmpty";
     }
 
     @Override
@@ -25,8 +22,12 @@ public record ContainsOperation(Integer element) implements ListOperation<Intege
 
         BoolExpr listUnchanged = context.mkEq(oldContent,newContent);
 
-        BoolExpr correctResult = context.mkEq(context.mkBool(result), context.mkContains(oldContent,context.mkUnit(context.mkInt(element))));
+        Sort intSort = context.getIntSort();
+        Sort seqSort = context.mkSeqSort(intSort);
 
+        SeqExpr emptySeq = context.mkEmptySeq(seqSort);
+
+        BoolExpr correctResult = context.mkEq(context.mkBool(result), context.mkEq(emptySeq,oldContent));
 
         return context.mkAnd(listUnchanged,correctResult);
     }

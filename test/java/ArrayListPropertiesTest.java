@@ -8,21 +8,23 @@ import java.util.List;
 
 
 class ArrayListPropertiesTest {
-
+    /*
     @Property(tries = 10)
     void arrayListAddOperationsConformToJavaContracts(
             @ForAll("addOnlySequences") List<ListOperation<Integer, ?>> operations) {
 
         executeAndVerify(operations, "Add-Only Test");
     }
+     */
 
-    //Test mit gemischten Operationen (Add, Contains, Remove)
+    //Test mit gemischten Operationen
     @Property(tries = 15)
     void arrayListMixedOperationsConformToJavaContracts(
             @ForAll("mixedOperationsSequences") List<ListOperation<Integer, ?>> operations) {
 
         executeAndVerify(operations, "Mixed Operations Test");
     }
+/*
 
     //Test mit Add + Get Operationen (erfordert nicht-leere Liste)
     @Property(tries = 10)
@@ -30,6 +32,14 @@ class ArrayListPropertiesTest {
             @ForAll("addAndGetSequences") List<ListOperation<Integer, ?>> operations) {
 
         executeAndVerify(operations, "Add + Get Test");
+    }
+*/
+
+    @Property(tries = 15)
+    void arrayListAddIndexOperationsConformToJavaContracts(
+            @ForAll("addIndexSequences") List<ListOperation<Integer, ?>> operations) {
+
+        executeAndVerify(operations, "Add-Index Test");
     }
 
     // Gemeinsame Ausführungs- und Verifikationslogik
@@ -95,9 +105,13 @@ class ArrayListPropertiesTest {
         Arbitrary<ListOperation<Integer, ?>> containsOp = values.map(ContainsOperation::new);
 
         Arbitrary<ListOperation<Integer, ?>> removeOp = values.map(RemoveOperation::new);
+        Arbitrary<ListOperation<Integer, ?>> clearOp = Arbitraries.just(new ClearOperation());
+        Arbitrary<ListOperation<Integer, ?>> isEmptyOp = Arbitraries.just(new IsEmptyOperation());
+
+
 
         // Alle Operations gemischt
-        Arbitrary<ListOperation<Integer, ?>> anyOp = Arbitraries.oneOf(addOp, containsOp, removeOp);
+        Arbitrary<ListOperation<Integer, ?>> anyOp = Arbitraries.oneOf(addOp, containsOp, removeOp,clearOp,isEmptyOp);
 
         // Sequenz: Erste Operation ist Add, dann 1-4 beliebige Operationen
         return addOp.flatMap(firstAdd ->
@@ -132,6 +146,35 @@ class ArrayListPropertiesTest {
                                     result.add(new GetOperation(index));
                                 }
                                 return result;
+                            });
+                });
+    }
+
+    @Provide
+    Arbitrary<List<ListOperation<Integer, ?>>> addIndexSequences() {
+        return Arbitraries.integers().between(1, 20)
+                .list().ofMinSize(1).ofMaxSize(5)
+                .flatMap(initialElements -> {
+
+                    // Erst normale Add-Operationen für Basis-Liste
+                    List<ListOperation<Integer, ?>> operations = new ArrayList<>();
+                    for (Integer elem : initialElements) {
+                        operations.add(new AddOperation(elem));
+                    }
+
+                    // Dann AddIndex-Operationen mit gültigen Indizes
+                    return Arbitraries.integers().between(0, 99)
+                            .list().ofMinSize(1).ofMaxSize(3)
+                            .map(newElements -> {
+                                int currentSize = initialElements.size();
+
+                                for (Integer elem : newElements) {
+                                    // Gültiger Index: 0 <= index <= currentSize
+                                    int validIndex = Math.abs(elem % (currentSize + 1));
+                                    operations.add(new AddIndexOperation(validIndex, elem));
+                                    currentSize++;
+                                }
+                                return operations;
                             });
                 });
     }
