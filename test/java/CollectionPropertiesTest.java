@@ -1,4 +1,3 @@
-// CollectionPropertiesTest.java - VOLLSTÄNDIGE VERSION
 import model.*;
 import model.operations.*;
 import net.jqwik.api.*;
@@ -137,7 +136,7 @@ class CollectionPropertiesTest {
                                     currentSize++;
                                 }
 
-                                // Optional:Ein paar Get-Operationen hinzufügen
+                                //Ein paar Get-Operationen hinzufügen
                                 if (currentSize > 0) {
                                     int getIndex = Math.abs(newElements.get(0) % currentSize);
                                     operations.add(new GetOperation(getIndex));
