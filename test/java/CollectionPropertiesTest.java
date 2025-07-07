@@ -7,7 +7,6 @@ import java.util.*;
 
 class CollectionPropertiesTest {
 
-
     // ArrayList Tests
     @Property(tries = 5)
     void arrayListMixedOperationsConformToContracts(
@@ -149,7 +148,7 @@ class CollectionPropertiesTest {
 
     @Provide
     Arbitrary<List<CollectionOperation<Integer, ?>>> setOperations() {
-        Arbitrary<Integer> values = Arbitraries.integers().between(1, 10);
+        Arbitrary<Integer> values = Arbitraries.integers().between(1,5);
 
         Arbitrary<CollectionOperation<Integer, ?>> addOp = values.map(AddOperation::new);
         Arbitrary<CollectionOperation<Integer, ?>> containsOp = values.map(ContainsOperation::new);

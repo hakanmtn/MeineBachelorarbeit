@@ -42,14 +42,13 @@ public class CollectionZ3Verifier {
                         + " (" + executor.getType() + ")");
             }
 
-            // Satisfiability prüfen
             Status status = solver.check();
             System.out.println("Z3 Verification (" + executor.getType() + "): " + status);
             return status == Status.SATISFIABLE;
 
         } catch (Exception e) {
             System.err.println("Z3 Verification error: " + e);
-            e.printStackTrace();
+            System.out.println(e.getMessage());
             return false;
         }
     }
