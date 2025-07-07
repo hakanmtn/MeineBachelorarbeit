@@ -1,18 +1,15 @@
 package model.operations;
 
-import com.microsoft.z3.BoolExpr;
-import com.microsoft.z3.Context;
-import com.microsoft.z3.IntSort;
-import com.microsoft.z3.SeqExpr;
-import model.ListOperation;
+import com.microsoft.z3.*;
+import model.CollectionOperation;
+import java.util.Collection;
 
-import java.util.List;
-
-public record ContainsOperation(Integer element) implements ListOperation<Integer,Boolean>{
+//contains methode für Sets und List gleich
+public record ContainsOperation(Integer element) implements CollectionOperation<Integer, Boolean> {
 
     @Override
-    public Boolean execute(List<Integer> list) {
-        return list.contains(element);
+    public Boolean execute(Collection<Integer> collection) {
+        return collection.contains(element);
     }
 
     @Override
@@ -21,13 +18,29 @@ public record ContainsOperation(Integer element) implements ListOperation<Intege
     }
 
     @Override
-    public BoolExpr contract(SeqExpr<IntSort> oldContent, SeqExpr<IntSort> newContent, Boolean result, Context context) {
+    public BoolExpr listContract(SeqExpr<IntSort> oldContent, SeqExpr<IntSort> newContent,
+                                 Object result, Context context) {
+        Boolean boolResult = (Boolean) result;
+        return commonContainsContract(oldContent, newContent, boolResult, context);
+    }
 
-        BoolExpr listUnchanged = context.mkEq(oldContent,newContent);
+    @Override
+    public BoolExpr setContract(SeqExpr<IntSort> oldContent, SeqExpr<IntSort> newContent,
+                                Object result, Context context) {
+        Boolean boolResult = (Boolean) result;
+        return commonContainsContract(oldContent, newContent, boolResult, context);
+    }
 
-        BoolExpr correctResult = context.mkEq(context.mkBool(result), context.mkContains(oldContent,context.mkUnit(context.mkInt(element))));
+    private BoolExpr commonContainsContract(SeqExpr<IntSort> oldContent, SeqExpr<IntSort> newContent,
+                                            Boolean result, Context context) {
+        BoolExpr collectionUnchanged = context.mkEq(oldContent, newContent);
 
+        SeqExpr<IntSort> elementSeq = context.mkUnit(context.mkInt(element));
+        BoolExpr correctResult = context.mkEq(
+                context.mkBool(result),
+                context.mkContains(oldContent, elementSeq)
+        );
 
-        return context.mkAnd(listUnchanged,correctResult);
+        return context.mkAnd(collectionUnchanged, correctResult);
     }
 }

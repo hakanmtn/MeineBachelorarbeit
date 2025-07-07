@@ -1,18 +1,14 @@
 package model.operations;
 
-import com.microsoft.z3.BoolExpr;
-import com.microsoft.z3.Context;
-import com.microsoft.z3.IntSort;
-import com.microsoft.z3.SeqExpr;
-import model.ListOperation;
+import com.microsoft.z3.*;
+import model.CollectionOperation;
+import java.util.Collection;
 
-import java.util.List;
-
-public record AddOperation(Integer element) implements ListOperation<Integer,Boolean>{
+public record AddOperation(Integer element) implements CollectionOperation<Integer, Boolean> {
 
     @Override
-    public Boolean execute(List<Integer> list) {
-        return list.add(element);
+    public Boolean execute(Collection<Integer> collection) {
+        return collection.add(element);
     }
 
     @Override
@@ -21,15 +17,43 @@ public record AddOperation(Integer element) implements ListOperation<Integer,Boo
     }
 
     @Override
-    public BoolExpr contract(SeqExpr<IntSort> oldContent, SeqExpr<IntSort> newContent, Boolean result, Context context) {
+    public BoolExpr listContract(SeqExpr<IntSort> oldContent, SeqExpr<IntSort> newContent,
+                                 Object result, Context context) {
 
-        //newContent = oldContent ++ element
+        Boolean boolResult = (Boolean) result;
+
         BoolExpr correctSequence = context.mkEq(newContent,
-                context.mkConcat(oldContent,context.mkUnit(context.mkInt(element))));
+                context.mkConcat(oldContent, context.mkUnit(context.mkInt(element))));
 
-        //result = true
-        BoolExpr correctResult = context.mkEq(context.mkBool(result), context.mkTrue());
+        BoolExpr correctResult = context.mkEq(context.mkBool(boolResult), context.mkTrue());
 
         return context.mkAnd(correctSequence, correctResult);
+    }
+
+    @Override
+    public BoolExpr setContract(SeqExpr<IntSort> oldContent, SeqExpr<IntSort> newContent,
+                                Object result, Context context) {
+
+        Boolean boolResult = (Boolean) result;
+
+        SeqExpr<IntSort> elementSeq = context.mkUnit(context.mkInt(element));
+
+        BoolExpr elementExists = context.mkContains(oldContent, elementSeq);
+        BoolExpr noChange = context.mkAnd(
+                context.mkNot(context.mkBool(boolResult)),
+                context.mkEq(newContent, oldContent)
+        );
+        BoolExpr caseExists = context.mkImplies(elementExists, noChange);
+
+        BoolExpr elementNew = context.mkNot(elementExists);
+        BoolExpr wasAdded = context.mkAnd(
+                context.mkBool(boolResult),
+                context.mkEq(context.mkLength(newContent),
+                        context.mkAdd(context.mkLength(oldContent), context.mkInt(1))),
+                context.mkContains(newContent, elementSeq)
+        );
+        BoolExpr caseNew = context.mkImplies(elementNew, wasAdded);
+
+        return context.mkAnd(caseExists, caseNew);
     }
 }

@@ -1,15 +1,14 @@
 package model.operations;
 
 import com.microsoft.z3.*;
-import model.ListOperation;
+import model.CollectionOperation;
+import java.util.Collection;
 
-import java.util.List;
-
-public record ClearOperation() implements ListOperation<Integer,Void> {
+public record ClearOperation() implements CollectionOperation<Integer, Void> {
 
     @Override
-    public Void execute(List<Integer> list) {
-        list.clear();
+    public Void execute(Collection<Integer> collection) {
+        collection.clear();
         return null;
     }
 
@@ -19,13 +18,25 @@ public record ClearOperation() implements ListOperation<Integer,Void> {
     }
 
     @Override
-    public BoolExpr contract(SeqExpr<IntSort> oldContent, SeqExpr<IntSort> newContent, Void result, Context context) {
+    public BoolExpr listContract(SeqExpr<IntSort> oldContent, SeqExpr<IntSort> newContent,
+                                 Object result, Context context) {
 
+        return commonClearContract( newContent, context);
+    }
+
+    @Override
+    public BoolExpr setContract(SeqExpr<IntSort> oldContent, SeqExpr<IntSort> newContent,
+                                Object result, Context context) {
+
+        return commonClearContract(newContent, context);
+    }
+
+    private BoolExpr commonClearContract( SeqExpr<IntSort> newContent,
+                                         Context context) {
         IntSort intSort = context.getIntSort();
         Sort seqSort = context.mkSeqSort(intSort);
-
         SeqExpr emptySeq = context.mkEmptySeq(seqSort);
 
-        return context.mkEq(newContent,emptySeq);
+        return context.mkEq(newContent, emptySeq);
     }
 }

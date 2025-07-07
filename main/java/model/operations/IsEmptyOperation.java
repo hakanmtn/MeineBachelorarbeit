@@ -1,15 +1,14 @@
 package model.operations;
 
 import com.microsoft.z3.*;
-import model.ListOperation;
+import model.CollectionOperation;
+import java.util.Collection;
 
-import java.util.List;
-
-public record IsEmptyOperation() implements ListOperation<Integer,Boolean>{
+public record IsEmptyOperation() implements CollectionOperation<Integer, Boolean> {
 
     @Override
-    public Boolean execute(List<Integer> list) {
-        return list.isEmpty();
+    public Boolean execute(Collection<Integer> collection) {
+        return collection.isEmpty();
     }
 
     @Override
@@ -18,17 +17,32 @@ public record IsEmptyOperation() implements ListOperation<Integer,Boolean>{
     }
 
     @Override
-    public BoolExpr contract(SeqExpr<IntSort> oldContent, SeqExpr<IntSort> newContent, Boolean result, Context context) {
+    public BoolExpr listContract(SeqExpr<IntSort> oldContent, SeqExpr<IntSort> newContent,
+                                 Object result, Context context) {
+        Boolean boolResult = (Boolean) result;
+        return commonIsEmptyContract(oldContent, newContent, boolResult, context);
+    }
 
-        BoolExpr listUnchanged = context.mkEq(oldContent,newContent);
+    @Override
+    public BoolExpr setContract(SeqExpr<IntSort> oldContent, SeqExpr<IntSort> newContent,
+                                Object result, Context context) {
+        Boolean boolResult = (Boolean) result;  // Cast hinzugefügt
+        return commonIsEmptyContract(oldContent, newContent, boolResult, context);
+    }
+
+    private BoolExpr commonIsEmptyContract(SeqExpr<IntSort> oldContent, SeqExpr<IntSort> newContent,
+                                           Boolean result, Context context) {
+        BoolExpr collectionUnchanged = context.mkEq(oldContent, newContent);
 
         Sort intSort = context.getIntSort();
         Sort seqSort = context.mkSeqSort(intSort);
-
         SeqExpr emptySeq = context.mkEmptySeq(seqSort);
 
-        BoolExpr correctResult = context.mkEq(context.mkBool(result), context.mkEq(emptySeq,oldContent));
+        BoolExpr correctResult = context.mkEq(
+                context.mkBool(result),
+                context.mkEq(emptySeq, oldContent)
+        );
 
-        return context.mkAnd(listUnchanged,correctResult);
+        return context.mkAnd(collectionUnchanged, correctResult);
     }
 }

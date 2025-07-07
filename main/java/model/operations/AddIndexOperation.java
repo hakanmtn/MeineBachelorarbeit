@@ -1,19 +1,20 @@
 package model.operations;
 
-import com.microsoft.z3.BoolExpr;
-import com.microsoft.z3.Context;
-import com.microsoft.z3.IntSort;
-import com.microsoft.z3.SeqExpr;
-import model.ListOperation;
-
+import com.microsoft.z3.*;
+import model.CollectionOperation;
+import java.util.Collection;
 import java.util.List;
 
-public record AddIndexOperation(int index, Integer element) implements ListOperation<Integer, Void>{
-
+public record AddIndexOperation(int index, Integer element) implements CollectionOperation<Integer, Void> {
 
     @Override
-    public Void execute(List<Integer> list) {
-        list.add(index,element);  // nicht boolean, sondern gibt void zurück.
+    public Void execute(Collection<Integer> collection) {
+        if (!(collection instanceof List)) {
+            throw new UnsupportedOperationException("add(index, element) ist nur für Listen verfügbar");
+        }
+
+        List<Integer> list = (List<Integer>) collection;
+        list.add(index, element);
         return null;
     }
 
@@ -23,26 +24,27 @@ public record AddIndexOperation(int index, Integer element) implements ListOpera
     }
 
     @Override
-    public BoolExpr contract(SeqExpr<IntSort> oldContent, SeqExpr<IntSort> newContent, Void result, Context context) {
+    public BoolExpr listContract(SeqExpr<IntSort> oldContent, SeqExpr<IntSort> newContent,
+                                 Object result, Context context) {
 
-        //vorbedingung
-        BoolExpr precondition = context.mkAnd(context.mkGe(context.mkInt(index), context.mkInt(0)),
-                context.mkLe(context.mkInt(index), context.mkLength(oldContent)));
+        BoolExpr precondition = context.mkAnd(
+                context.mkGe(context.mkInt(index), context.mkInt(0)),
+                context.mkLe(context.mkInt(index), context.mkLength(oldContent))
+        );
 
-        //nachbedingung prefix, element, suffix
         SeqExpr<IntSort> prefix = context.mkExtract(oldContent, context.mkInt(0), context.mkInt(index));
-
-        //element als einzeln Sequenz
         SeqExpr<IntSort> elementSeq = context.mkUnit(context.mkInt(element));
-
-        //suffix
         SeqExpr<IntSort> suffix = context.mkExtract(oldContent, context.mkInt(index), context.mkLength(oldContent));
 
-        // prefix + element + suffix
         SeqExpr<IntSort> expectedNewContent = context.mkConcat(prefix, elementSeq, suffix);
-
         BoolExpr postcondition = context.mkEq(newContent, expectedNewContent);
 
         return context.mkImplies(precondition, postcondition);
+    }
+
+    @Override
+    public BoolExpr setContract(SeqExpr<IntSort> oldContent, SeqExpr<IntSort> newContent,
+                                Object result, Context context) {
+        throw new UnsupportedOperationException("add(index, element) ist nicht für Sets verfügbar");
     }
 }

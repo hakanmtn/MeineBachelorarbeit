@@ -1,20 +1,20 @@
 package model.operations;
 
-
-import com.microsoft.z3.BoolExpr;
-import com.microsoft.z3.Context;
-import com.microsoft.z3.IntSort;
-import com.microsoft.z3.SeqExpr;
-import model.ListOperation;
-
+import com.microsoft.z3.*;
+import model.CollectionOperation;
+import java.util.Collection;
 import java.util.List;
 
-public record GetOperation(int index) implements ListOperation<Integer,Integer> {
-
+public record GetOperation(int index) implements CollectionOperation<Integer, Integer> {
 
     @Override
-    public Integer execute(List<Integer> list) {
-        if (index < 0 || index > list.size()) {
+    public Integer execute(Collection<Integer> collection) {
+        if (!(collection instanceof List)) {
+            throw new UnsupportedOperationException("get() ist nur für Listen verfügbar");
+        }
+
+        List<Integer> list = (List<Integer>) collection;
+        if (index < 0 || index >= list.size()) {
             throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + list.size());
         }
 
@@ -27,20 +27,28 @@ public record GetOperation(int index) implements ListOperation<Integer,Integer> 
     }
 
     @Override
-    public BoolExpr contract(SeqExpr<IntSort> oldContent, SeqExpr<IntSort> newContent, Integer result, Context context) {
+    public BoolExpr listContract(SeqExpr<IntSort> oldContent, SeqExpr<IntSort> newContent,
+                                 Object result, Context context) {
+        Integer intResult = (Integer) result;
 
         BoolExpr listUnchanged = context.mkEq(newContent, oldContent);
 
-        //Index muss gültig sein
-        BoolExpr validIndex = context.mkAnd(context.mkGe(context.mkInt(index), context.mkInt(0)),
-                context.mkLt(context.mkInt(index), context.mkLength(oldContent)));
+        BoolExpr validIndex = context.mkAnd(
+                context.mkGe(context.mkInt(index), context.mkInt(0)),
+                context.mkLt(context.mkInt(index), context.mkLength(oldContent))
+        );
 
-       BoolExpr correctResult = context.mkEq(context.mkInt(result), context.mkNth(oldContent,context.mkInt(index)));
+        BoolExpr correctResult = context.mkEq(
+                context.mkInt(intResult),
+                context.mkNth(oldContent, context.mkInt(index))
+        );
 
-
-        return context.mkAnd(listUnchanged,validIndex, correctResult);
+        return context.mkAnd(listUnchanged, validIndex, correctResult);
     }
 
-
-
+    @Override
+    public BoolExpr setContract(SeqExpr<IntSort> oldContent, SeqExpr<IntSort> newContent,
+                                Object result, Context context) {
+        throw new UnsupportedOperationException("get() ist nicht für Sets verfügbar");
+    }
 }
