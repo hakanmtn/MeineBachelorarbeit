@@ -6,6 +6,7 @@ import java.util.Collection;
 public interface CollectionOperation<T, R> {
 
     R execute(Collection<T> collection);
+
     String getContractName();
 
     BoolExpr listContract(SeqExpr<IntSort> oldContent, SeqExpr<IntSort> newContent,

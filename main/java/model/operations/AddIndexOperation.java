@@ -27,6 +27,7 @@ public record AddIndexOperation(int index, Integer element) implements Collectio
     public BoolExpr listContract(SeqExpr<IntSort> oldContent, SeqExpr<IntSort> newContent,
                                  Object result, Context context) {
 
+        //index >= 0 und index <= length
         BoolExpr precondition = context.mkAnd(
                 context.mkGe(context.mkInt(index), context.mkInt(0)),
                 context.mkLe(context.mkInt(index), context.mkLength(oldContent))

@@ -26,7 +26,7 @@ public record IsEmptyOperation() implements CollectionOperation<Integer, Boolean
     @Override
     public BoolExpr setContract(SeqExpr<IntSort> oldContent, SeqExpr<IntSort> newContent,
                                 Object result, Context context) {
-        Boolean boolResult = (Boolean) result;  // Cast hinzugefügt
+        Boolean boolResult = (Boolean) result;
         return commonIsEmptyContract(oldContent, newContent, boolResult, context);
     }
 

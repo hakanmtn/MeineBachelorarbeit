@@ -85,12 +85,8 @@ public class CollectionZ3Verifier {
 
         SeqExpr result = ctx.mkEmptySeq(seqSort);
 
-
         for (Integer i : collection) {
-            IntExpr intValue = ctx.mkInt(i);
-            SeqExpr unit = ctx.mkUnit(intValue);
-            SeqExpr[] concatArgs = new SeqExpr[]{result, unit};
-            result = ctx.mkConcat(concatArgs);
+            result = ctx.mkConcat(result, ctx.mkUnit(ctx.mkInt(i)));
         }
 
         //System.out.println("Collection to Seq: " + result);

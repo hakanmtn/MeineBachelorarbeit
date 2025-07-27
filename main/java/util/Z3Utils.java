@@ -1,9 +1,5 @@
 package util;
 
-import com.microsoft.z3.*;
-import java.util.HashMap;
-
-
 public class Z3Utils {
     private static boolean loaded = false;
 

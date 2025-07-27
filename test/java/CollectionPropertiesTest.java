@@ -37,7 +37,7 @@ class CollectionPropertiesTest {
     }
 
     // HashSet tests
-    @Property(tries = 5)
+    @Property(tries = 10)
     void hashSetOperationsConformToContracts(
             @ForAll("setOperations") List<CollectionOperation<Integer, ?>> operations) {
 
@@ -88,62 +88,64 @@ class CollectionPropertiesTest {
 
     @Provide
     Arbitrary<List<CollectionOperation<Integer, ?>>> listMixedOperations() {
-        Arbitrary<Integer> values = Arbitraries.integers().between(1, 10);
+        return Arbitraries.create(() -> {
+            Random random = new Random();
+            List<CollectionOperation<Integer, ?>> operations = new ArrayList<>();
 
-        Arbitrary<CollectionOperation<Integer, ?>> addOp = values.map(AddOperation::new);
-        Arbitrary<CollectionOperation<Integer, ?>> containsOp = values.map(ContainsOperation::new);
-        Arbitrary<CollectionOperation<Integer, ?>> removeOp = values.map(RemoveOperation::new);
-        Arbitrary<CollectionOperation<Integer, ?>> clearOp = Arbitraries.just(new ClearOperation());
-        Arbitrary<CollectionOperation<Integer, ?>> isEmptyOp = Arbitraries.just(new IsEmptyOperation());
+            // Erste Operation: immer add
+            operations.add(new AddOperation(random.nextInt(10) + 1));
 
-        Arbitrary<CollectionOperation<Integer, ?>> anyOp = Arbitraries.oneOf(
-                addOp, containsOp, removeOp, clearOp, isEmptyOp);
-
-        // Sequenz: Erste Operation ist Add, dann 1-4 beliebige Operationen
-        return addOp.flatMap(firstAdd ->
-                anyOp.list().ofMinSize(1).ofMaxSize(10)
-                        .map(restOps -> {
-                            List<CollectionOperation<Integer, ?>> result = new ArrayList<>();
-                            result.add(firstAdd);
-                            result.addAll(restOps);
-                            return result;
-                        })
-        );
+            // 1-9 weitere Operationen
+            int numOps = random.nextInt(9) + 1;
+            for (int i = 0; i < numOps; i++) {
+                int value = random.nextInt(10) + 1;
+                switch (random.nextInt(5)) {
+                    case 0 -> operations.add(new AddOperation(value));
+                    case 1 -> operations.add(new ContainsOperation(value));
+                    case 2 -> operations.add(new RemoveOperation(value));
+                    case 3 -> operations.add(new ClearOperation());
+                    case 4 -> operations.add(new IsEmptyOperation());
+                }
+            }
+            return operations;
+        });
     }
 
     @Provide
     Arbitrary<List<CollectionOperation<Integer, ?>>> listWithIndexOperations() {
-        return Arbitraries.integers().between(1, 20)
-                .list().ofMinSize(1).ofMaxSize(5)
-                .flatMap(initialElements -> {
-                    // Erst normale Add-Operationen für Basis-Liste -- ansonsten Exception !!
-                    List<CollectionOperation<Integer, ?>> operations = new ArrayList<>();
-                    for (Integer elem : initialElements) {
-                        operations.add(new AddOperation(elem));
-                    }
+        return Arbitraries.create(() -> {
+            Random random = new Random();
+            List<CollectionOperation<Integer, ?>> operations = new ArrayList<>();
 
-                    // Dann AddIndex-Operationen mit gültigen Indizes
-                    return Arbitraries.integers().between(0, 10)
-                            .list().ofMinSize(1).ofMaxSize(10)
-                            .map(newElements -> {
-                                int currentSize = initialElements.size();
+            List<Integer> simulatedList = new ArrayList<>();
 
-                                for (Integer elem : newElements) {
-                                    // Gültiger Index: 0 <= index <= currentSize
-                                    int validIndex = Math.abs(elem % (currentSize + 1));
-                                    operations.add(new AddIndexOperation(validIndex, elem));
-                                    currentSize++;
-                                }
+            // Erstelle Basis-Liste mit 1-5 Elementen
+            int baseSize = random.nextInt(5) + 1;
+            for (int i = 0; i < baseSize; i++) {
+                int value = random.nextInt(20) + 1;
+                operations.add(new AddOperation(value));
+                simulatedList.add(value);
+            }
 
-                                //Ein paar Get-Operationen hinzufügen
-                                if (currentSize > 0) {
-                                    int getIndex = Math.abs(newElements.get(0) % currentSize);
-                                    operations.add(new GetOperation(getIndex));
-                                }
+            // Füge 1-5 Index-Operationen hinzu
+            int numIndexOps = random.nextInt(5) + 1;
+            for (int i = 0; i < numIndexOps; i++) {
+                int value = random.nextInt(20) + 1;
 
-                                return operations;
-                            });
-                });
+                int validIndex = random.nextInt(simulatedList.size() + 1);
+
+                operations.add(new AddIndexOperation(validIndex, value));
+
+                simulatedList.add(validIndex, value);
+            }
+
+            if (!simulatedList.isEmpty()) {
+                int getIndex = random.nextInt(simulatedList.size());
+                operations.add(new GetOperation(getIndex));
+            }
+
+            return operations;
+        });
     }
 
     @Provide
